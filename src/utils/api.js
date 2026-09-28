@@ -9,7 +9,7 @@ async function apiFetch(path, options = {}) {
   if (token) headers['Authorization'] = `Bearer ${token}`;
   
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  if (res.status === 401) {
+  if (res.status === 401 && path !== '/api/auth/login') {
     localStorage.removeItem('brochat_token');
     window.location.href = '/login';
     return;
