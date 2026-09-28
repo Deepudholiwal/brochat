@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brochat Widget Test Page</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 40px;
+      background: #f7f8f3;
+      color: #102d2a;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+    }
+    h1 { color: #143a35; }
+    p { line-height: 1.6; color: #58716a; }
+    .card {
+      background: #e9f2e9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      border-left: 4px solid #143a35;
+    }
+    code {
+      background: #1e1e1e;
+      color: #c6ff6d;
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: block;
+      margin-top: 10px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Welcome to Your Website (Test Demo Page)</h1>
+    <p>This is a sample host website demonstrating how the <strong>Brochat Widget</strong> renders and interacts with your backend data.</p>
+    
+    <div class="card">
+      <h3>Active Embed Snippet:</h3>
+      <code>&lt;script src="http://localhost:8000/widget.js" data-bot-id="56f3e571-8961-406b-805e-1eacf74c1c72"&gt;&lt;/script&gt;</code>
+    </div>
+
+    <p style="margin-top: 30px;">👉 Look at the <strong>bottom-right corner</strong> of this page! You will see your Brochat AI assistant bubble floating and ready for questions.</p>
+  </div>
+
+  <!-- EMBEDDED WIDGET -->
+  <script src="http://localhost:8000/widget.js" data-bot-id="56f3e571-8961-406b-805e-1eacf74c1c72"></script>
+</body>
+</html>
