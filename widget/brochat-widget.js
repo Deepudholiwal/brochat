@@ -26,7 +26,7 @@
   let primaryColor = config.primaryColor;
   
   // Try to detect API base URL from current script src
-  let apiBaseUrl = 'http://localhost:8000';
+  let apiBaseUrl = 'https://brochat-gxkm.onrender.com';
   const scripts = document.getElementsByTagName('script');
   for (let i = 0; i < scripts.length; i++) {
     const src = scripts[i].src;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { api } from '../utils/api';
+import { api, API_BASE } from '../utils/api';
 import { ArrowLeft, Globe, Copy, Check, Trash2, Clock, CheckCircle, Loader } from 'lucide-react';
 
 export default function BotDetail() {
@@ -79,7 +79,7 @@ export default function BotDetail() {
   };
 
   const copyEmbedCode = () => {
-    const code = `<script src="http://localhost:8000/widget.js" data-bot-id="${id}"></script>`;
+    const code = `<script src="${API_BASE}/widget.js" data-bot-id="${id}"></script>`;
     navigator.clipboard.writeText(code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -221,8 +221,8 @@ export default function BotDetail() {
               <div className="code-block">
                 <pre>
                   <code>
-{`<script 
-  src="http://localhost:8000/widget.js" 
+{`<script
+  src="${API_BASE}/widget.js"
   data-bot-id="${id}"
 ></script>`}
                   </code>

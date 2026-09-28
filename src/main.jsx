@@ -9,11 +9,12 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import BotDetail from './pages/BotDetail';
 import ProtectedRoute from './components/ProtectedRoute';
+import { API_BASE } from './utils/api';
 
 const embedCode = `<script>
   window.brochat = { botId: 'your-bot-id' };
 </script>
-<script async src="https://cdn.brochat.ai/widget.js"></script>`;
+<script async src="${API_BASE}/widget.js"></script>`;
 
 function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);

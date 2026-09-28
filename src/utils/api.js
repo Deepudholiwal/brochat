@@ -1,5 +1,7 @@
 // API client helper
-const API_BASE = 'http://localhost:8000';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV
+  ? 'http://localhost:8000'
+  : 'https://brochat-gxkm.onrender.com');
 
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('brochat_token');
