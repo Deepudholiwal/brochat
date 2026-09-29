@@ -55,6 +55,11 @@ def validate_persistent_storage() -> bool:
     print(f"Persistent data disk verified at {root}")
     return True
 
+
+if is_render_runtime():
+    validate_persistent_storage()
+
+
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
