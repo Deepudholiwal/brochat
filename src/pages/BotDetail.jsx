@@ -13,6 +13,13 @@ export default function BotDetail() {
   const [urlInput, setUrlInput] = useState('');
   const [copied, setCopied] = useState(false);
   const [refreshingSourceId, setRefreshingSourceId] = useState('');
+  const [isAddingSource, setIsAddingSource] = useState(false);
+  const [sourceError, setSourceError] = useState('');
+  const hasScrapingSources = sources.some((source) => source.status === 'scraping');
+  const isRefreshingSource = Boolean(refreshingSourceId);
+  const pagesInProgress = sources
+    .filter((source) => source.status === 'scraping')
+    .reduce((total, source) => total + (source.pages_scraped || 0), 0);
   
   // Customization state
   const [editName, setEditName] = useState('');
@@ -45,15 +52,28 @@ export default function BotDetail() {
     fetchData();
   }, [id]);
 
+  useEffect(() => {
+    if (!isAddingSource && !isRefreshingSource && !hasScrapingSources) return undefined;
+    const interval = window.setInterval(() => {
+      api.getSources(id).then(setSources).catch((err) => console.error(err));
+    }, 1200);
+    return () => window.clearInterval(interval);
+  }, [id, isAddingSource, isRefreshingSource, hasScrapingSources]);
+
   const handleAddSource = async (e) => {
     e.preventDefault();
     if (!urlInput) return;
+    setIsAddingSource(true);
+    setSourceError('');
     try {
       await api.addSource(id, { url: urlInput });
       setUrlInput('');
-      fetchData(); // Refresh sources
+      await fetchData();
     } catch (err) {
-      console.error(err);
+      setSourceError(err.message);
+      api.getSources(id).then(setSources).catch((refreshError) => console.error(refreshError));
+    } finally {
+      setIsAddingSource(false);
     }
   };
 
@@ -68,11 +88,13 @@ export default function BotDetail() {
 
   const handleRefreshSource = async (sourceId) => {
     setRefreshingSourceId(sourceId);
+    setSourceError('');
     try {
       await api.refreshSource(id, sourceId);
       await fetchData();
     } catch (err) {
-      console.error(err);
+      setSourceError(err.message);
+      api.getSources(id).then(setSources).catch((refreshError) => console.error(refreshError));
     } finally {
       setRefreshingSourceId('');
     }
@@ -134,10 +156,15 @@ export default function BotDetail() {
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   placeholder="https://example.com"
+                  disabled={isAddingSource}
                   required
                 />
-                <button type="submit" className="btn-primary">Scrape</button>
+                <button type="submit" className="btn-primary" disabled={isAddingSource || hasScrapingSources}>
+                  {isAddingSource || hasScrapingSources ? <><Loader size={16} className="pulse" /> Scraping{pagesInProgress ? ` · ${pagesInProgress} pages` : '...'}</> : <><Globe size={16} /> Scrape website</>}
+                </button>
               </form>
+              {(isAddingSource || isRefreshingSource || hasScrapingSources) && <div className="scrape-progress" role="status"><span />{pagesInProgress ? `${pagesInProgress} page${pagesInProgress === 1 ? '' : 's'} processed so far...` : 'Connecting to website and discovering pages...'}</div>}
+              {sourceError && <p className="admin-error" role="alert">{sourceError}</p>}
             </div>
 
             <div className="sources-list glass-panel">
@@ -155,21 +182,21 @@ export default function BotDetail() {
                             {source.status === 'pending' && <Clock size={12} />}
                             {source.status === 'scraping' && <Loader size={12} className="pulse" />}
                             {source.status === 'ready' && <CheckCircle size={12} />}
-                            {source.status}
+                            {source.status === 'scraping' ? 'Scraping' : source.status}
                           </span>
-                          <span className="page-count">{source.pages_scraped || 0} pages</span>
+                          <span className="page-count">{source.status === 'scraping' ? `${source.pages_scraped || 0} processed` : `${source.pages_scraped || 0} pages`}</span>
                         </div>
                       </div>
                       <button
                         className="icon-btn"
                         title="Refresh website content and tool links"
                         aria-label={`Refresh ${source.url}`}
-                        disabled={refreshingSourceId === source.id}
+                        disabled={refreshingSourceId === source.id || source.status === 'scraping'}
                         onClick={() => handleRefreshSource(source.id)}
                       >
                         {refreshingSourceId === source.id ? <Loader className="pulse" size={17} /> : <RotateCw size={17} />}
                       </button>
-                      <button className="icon-btn delete" aria-label={`Delete ${source.url}`} onClick={() => handleDeleteSource(source.id)}>
+                      <button className="icon-btn delete" aria-label={`Delete ${source.url}`} disabled={source.status === 'scraping'} onClick={() => handleDeleteSource(source.id)}>
                         <Trash2 size={18} />
                       </button>
                     </li>

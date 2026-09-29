@@ -65,10 +65,15 @@ def init_db():
             url TEXT,
             status TEXT DEFAULT 'pending',
             pages_scraped INTEGER DEFAULT 0,
+            scrape_started_at TEXT,
             created_at TIMESTAMP,
             FOREIGN KEY(bot_id) REFERENCES bots(id)
         )
     ''')
+
+    source_columns = {row[1] for row in cursor.execute("PRAGMA table_info(knowledge_sources)")}
+    if "scrape_started_at" not in source_columns:
+        cursor.execute("ALTER TABLE knowledge_sources ADD COLUMN scrape_started_at TEXT")
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS conversations (

@@ -1,5 +1,6 @@
 import httpx
 import re
+from collections.abc import Awaitable, Callable
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 
@@ -19,7 +20,11 @@ def extract_link_references(soup: BeautifulSoup, page_url: str) -> list[str]:
     return references
 
 
-async def scrape_url(start_url: str, max_pages: int = 20):
+async def scrape_url(
+    start_url: str,
+    max_pages: int = 20,
+    progress_callback: Callable[[int], Awaitable[None]] | None = None,
+):
     visited = set()
     to_visit = [start_url]
     results = []
@@ -69,6 +74,9 @@ async def scrape_url(start_url: str, max_pages: int = 20):
                             
             except Exception as e:
                 print(f"Error scraping {url}: {e}")
+
+            if progress_callback:
+                await progress_callback(len(results))
                 
     return results
 

@@ -443,6 +443,11 @@ body {
   font-weight: 600;
 }
 
+.scrape-progress { display: flex; align-items: center; gap: 9px; margin-top: 12px; color: #386e5d; font-size: 12px; }
+.scrape-progress span { width: 100%; max-width: 90px; height: 4px; overflow: hidden; border-radius: 3px; background: #dce8df; position: relative; }
+.scrape-progress span::after { content: ''; position: absolute; inset: 0; width: 45%; border-radius: inherit; background: #39906e; animation: scrape-progress-slide 1.1s ease-in-out infinite alternate; }
+@keyframes scrape-progress-slide { from { transform: translateX(-10%); } to { transform: translateX(135%); } }
+
 .source-meta {
   display: flex;
   align-items: center;
