@@ -1,8 +1,14 @@
 import chromadb
+import os
 from pathlib import Path
 import hashlib
+import shutil
 
-CHROMA_DIR = Path(__file__).parent / "chroma_data"
+LEGACY_CHROMA_DIR = Path(__file__).parent / "chroma_data"
+CHROMA_DIR = Path(os.environ.get("CHROMA_PATH", LEGACY_CHROMA_DIR))
+if CHROMA_DIR != LEGACY_CHROMA_DIR and not CHROMA_DIR.exists() and LEGACY_CHROMA_DIR.exists():
+    shutil.copytree(LEGACY_CHROMA_DIR, CHROMA_DIR)
+
 client = chromadb.PersistentClient(path=str(CHROMA_DIR))
 
 def get_collection(bot_id: str):
