@@ -8,7 +8,7 @@ def is_render_runtime() -> bool:
 
 
 DEFAULT_DATA_DIR = Path(__file__).parent / "chroma_data"
-RENDER_DATA_DIR = Path("/app/backend/chroma_data")
+RENDER_DATA_DIR = Path("/var/data")
 DATA_DIR = Path(os.environ.get(
     "BROCHAT_DATA_DIR",
     RENDER_DATA_DIR if is_render_runtime() else DEFAULT_DATA_DIR,
