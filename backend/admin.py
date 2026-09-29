@@ -175,6 +175,58 @@ def update_bot(bot_id: str, bot: BotUpdate):
     return fetch_one("SELECT id, user_id, name, welcome_message, theme_color FROM bots WHERE id = ?", (bot_id,))
 
 
+@router.post("/bots/{bot_id}/transfer-to-admin")
+def transfer_bot_to_admin(bot_id: str, current_user: dict = Depends(require_admin)):
+    bot = fetch_one("SELECT id, user_id FROM bots WHERE id = ?", (bot_id,))
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+    execute_db("UPDATE bots SET user_id = ? WHERE id = ?", (current_user["id"], bot_id))
+    return {"status": "transferred", "bot_id": bot_id, "user_id": current_user["id"]}
+
+
+@router.delete("/users/{user_id}")
+def delete_user(user_id: str, current_user: dict = Depends(require_admin)):
+    if user_id == current_user["id"]:
+        raise HTTPException(status_code=400, detail="You cannot delete your own admin account")
+
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        target = connection.execute("SELECT id, role FROM users WHERE id = ?", (user_id,)).fetchone()
+        if not target:
+            raise HTTPException(status_code=404, detail="User not found")
+        if target["role"] == "admin":
+            raise HTTPException(status_code=403, detail="Admin accounts cannot be deleted here")
+
+        bot_ids = [row[0] for row in connection.execute("SELECT id FROM bots WHERE user_id = ?", (user_id,))]
+        for bot_id in bot_ids:
+            connection.execute("DELETE FROM conversations WHERE bot_id = ?", (bot_id,))
+            connection.execute("DELETE FROM knowledge_sources WHERE bot_id = ?", (bot_id,))
+            connection.execute("DELETE FROM bots WHERE id = ?", (bot_id,))
+        connection.execute("DELETE FROM users WHERE id = ?", (user_id,))
+        connection.commit()
+    except HTTPException:
+        connection.rollback()
+        raise
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+    for bot_id in bot_ids:
+        try:
+            from vector_store import client
+            collection_name = f"bot_{bot_id}"
+            if collection_name in {item.name for item in client.list_collections()}:
+                client.delete_collection(collection_name)
+        except Exception as error:
+            print(f"Could not remove vector data for deleted bot {bot_id}: {error}")
+
+    return {"status": "deleted", "deleted_bots": len(bot_ids)}
+
+
 @router.post("/users/{user_id}/password")
 def reset_user_password(user_id: str, reset: PasswordReset):
     if not fetch_one("SELECT id FROM users WHERE id = ?", (user_id,)):

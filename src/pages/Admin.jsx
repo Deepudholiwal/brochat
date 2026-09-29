@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, Save, ShieldCheck, Upload } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, LogOut, Save, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { api, logout } from '../utils/api';
 
 export default function Admin() {
@@ -105,6 +105,50 @@ export default function Admin() {
     }
   }
 
+  async function handleBotTransfer() {
+    if (!selectedBot || !selectedUser || selectedUser.role === 'admin') return;
+    const confirmed = window.confirm(
+      `Move "${selectedBot.name}" from ${selectedUser.email} to your administrator account? The bot ID and knowledge will stay the same.`
+    );
+    if (!confirmed) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await api.transferAdminBotToSelf(selectedBot.id);
+      const updatedUsers = await api.getAdminUsers();
+      setUsers(updatedUsers);
+      setSelectedUserId(result.user_id);
+      setNotice('Bot moved to your administrator account. Its ID and embed code are unchanged.');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteUser(user) {
+    if (user.role === 'admin') return;
+    const confirmed = window.confirm(
+      `Permanently delete ${user.name} (${user.email})? This also permanently deletes ${user.bot_count} bot(s), their website sources, conversations, and indexed knowledge. This cannot be undone.`
+    );
+    if (!confirmed) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const result = await api.deleteAdminUser(user.id);
+      const remainingUsers = users.filter((item) => item.id !== user.id);
+      setUsers(remainingUsers);
+      if (selectedUserId === user.id) setSelectedUserId(remainingUsers[0]?.id || '');
+      setNotice(`Account permanently deleted with ${result.deleted_bots} bot(s).`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleBackupRestore(event) {
     event.preventDefault();
     if (!backupFile) return;
@@ -182,18 +226,30 @@ export default function Admin() {
               {users.length ? (
                 <div className="admin-account-list">
                   {users.map((user) => (
-                    <button
-                      key={user.id}
-                      className={`admin-account${user.id === selectedUserId ? ' selected' : ''}`}
-                      onClick={() => { setSelectedUserId(user.id); setError(''); setNotice(''); }}
-                    >
-                      <span className="admin-account-name">
-                        {user.name || 'Unnamed account'}
-                        <span className="admin-role">{user.role}</span>
-                      </span>
-                      <span className="admin-account-email">{user.email}</span>
-                      <span className="admin-account-meta">{user.bot_count} bots</span>
-                    </button>
+                    <div className="admin-account-row" key={user.id}>
+                      <button
+                        className={`admin-account${user.id === selectedUserId ? ' selected' : ''}`}
+                        onClick={() => { setSelectedUserId(user.id); setError(''); setNotice(''); }}
+                      >
+                        <span className="admin-account-name">
+                          {user.name || 'Unnamed account'}
+                          <span className="admin-role">{user.role}</span>
+                        </span>
+                        <span className="admin-account-email">{user.email}</span>
+                        <span className="admin-account-meta">{user.bot_count} bots</span>
+                      </button>
+                      {user.role !== 'admin' && (
+                        <button
+                          className="admin-delete-user"
+                          title={`Permanently delete ${user.email} and their bots`}
+                          aria-label={`Permanently delete ${user.email}`}
+                          disabled={saving}
+                          onClick={() => handleDeleteUser(user)}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : <p className="admin-empty">No accounts found.</p>}
@@ -250,6 +306,7 @@ export default function Admin() {
                       <label>Bot name<input maxLength={120} value={botDraft.name} onChange={(event) => setBotDraft({ ...botDraft, name: event.target.value })} required /></label>
                       <label>Welcome message<textarea maxLength={2000} rows={3} value={botDraft.welcome_message} onChange={(event) => setBotDraft({ ...botDraft, welcome_message: event.target.value })} required /></label>
                       <label>Theme color<input type="color" value={botDraft.theme_color} onChange={(event) => setBotDraft({ ...botDraft, theme_color: event.target.value })} /></label>
+                      {selectedUser.role !== 'admin' && <button type="button" className="admin-transfer-bot" disabled={saving} onClick={handleBotTransfer}><ArrowRightLeft size={15} /> Move bot to my admin account</button>}
                       <button type="submit" disabled={saving}><Save size={15} /> Save bot settings</button>
                     </form>
                   )}

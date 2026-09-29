@@ -38,6 +38,8 @@ export const api = {
   restoreAdminBackup: (backup) => apiFetch('/api/admin/restore', { method: 'POST', body: JSON.stringify(backup) }),
   getAdminUserBots: (userId) => apiFetch(`/api/admin/users/${userId}/bots`),
   updateAdminBot: (botId, data) => apiFetch(`/api/admin/bots/${botId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  transferAdminBotToSelf: (botId) => apiFetch(`/api/admin/bots/${botId}/transfer-to-admin`, { method: 'POST' }),
+  deleteAdminUser: (userId) => apiFetch(`/api/admin/users/${userId}`, { method: 'DELETE' }),
   resetAdminUserPassword: (userId, password) => apiFetch(`/api/admin/users/${userId}/password`, { method: 'POST', body: JSON.stringify({ password }) }),
 };
 

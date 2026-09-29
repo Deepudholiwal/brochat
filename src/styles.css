@@ -675,8 +675,12 @@ body {
 .admin-panel-heading h2 { margin: 0; font-size: 17px; }
 .admin-count { color: var(--text-muted); font-size: 12px; }
 .admin-account-list { display: grid; max-height: 64vh; overflow: auto; }
-.admin-account { display: grid; gap: 4px; width: 100%; padding: 13px 8px; border: 0; border-bottom: 1px solid var(--border-color); background: transparent; color: var(--text-main); text-align: left; }
+.admin-account-row { display: grid; grid-template-columns: minmax(0, 1fr) 36px; align-items: stretch; border-bottom: 1px solid var(--border-color); }
+.admin-account { display: grid; gap: 4px; width: 100%; padding: 13px 8px; border: 0; background: transparent; color: var(--text-main); text-align: left; }
 .admin-account:hover, .admin-account.selected { background: #edf4ed; }
+.admin-delete-user { align-self: center; justify-self: center; width: 32px; height: 32px; border: 0; border-radius: 5px; background: transparent; color: #b34343; display: grid; place-items: center; }
+.admin-delete-user:hover:not(:disabled) { background: #f8e8e7; }
+.admin-delete-user:disabled { opacity: .45; cursor: not-allowed; }
 .admin-account-name { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
 .admin-account-email { overflow-wrap: anywhere; color: var(--text-muted); font-size: 12px; }
 .admin-account-meta { color: #778b83; font-size: 11px; }
@@ -688,6 +692,7 @@ body {
 .admin-reset-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 14px; }
 .admin-reset-form input, .admin-bot-form input, .admin-bot-form textarea, .admin-bot-form select { width: 100%; min-width: 0; padding: 10px 11px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; color: var(--text-main); font: inherit; font-size: 12px; }
 .admin-reset-form button, .admin-bot-form button { border: 0; border-radius: 6px; padding: 9px 12px; background: var(--primary-dark); color: #fff; font-size: 12px; font-weight: 700; }
+.admin-bot-form .admin-transfer-bot { display: inline-flex; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--border-color); background: #fff; color: var(--primary-dark); }
 .admin-bot-list { display: grid; gap: 8px; margin-top: 12px; }
 .admin-bot-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; background: white; color: var(--text-main); text-align: left; }
 .admin-bot-item:hover, .admin-bot-item.selected { border-color: #6d9b81; background: #f3f8f2; }
