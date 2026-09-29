@@ -2,12 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import List
 import uuid
-import sqlite3
 from datetime import datetime, timedelta
 from urllib.parse import urlsplit, urlunsplit
 
 from auth import get_current_user
-from database import DB_PATH, fetch_one, fetch_all, execute_db
+from database import DATABASE_URL, connect_database, fetch_one, fetch_all, execute_db
 from scraper import scrape_url, chunk_text
 from vector_store import add_chunks, delete_source_chunks
 
@@ -34,8 +33,7 @@ def normalize_source_url(url: str) -> str:
 
 
 def claim_source_scrape(bot_id: str, user_id: str, url: str, source_id: str | None = None) -> dict:
-    connection = sqlite3.connect(DB_PATH, timeout=10)
-    connection.row_factory = sqlite3.Row
+    connection = connect_database(timeout=10)
     now = datetime.utcnow()
     stale_before = (now - timedelta(minutes=30)).isoformat()
     try:
@@ -45,6 +43,8 @@ def claim_source_scrape(bot_id: str, user_id: str, url: str, source_id: str | No
         ).fetchone()
         if not bot:
             raise HTTPException(status_code=404, detail="Bot not found")
+        if DATABASE_URL:
+            connection.execute("SELECT id FROM users WHERE id = ? FOR UPDATE", (user_id,)).fetchone()
 
         if source_id:
             source = connection.execute(

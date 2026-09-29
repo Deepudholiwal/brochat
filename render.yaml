@@ -10,12 +10,8 @@ services:
         value: 3.12.0
       - key: JWT_SECRET_KEY
         sync: false
-      - key: DATABASE_PATH
-        value: /var/data/brochat.db
-      - key: BROCHAT_DATA_DIR
-        value: /var/data
-      - key: CHROMA_PATH
-        value: /var/data/chroma
+      - key: DATABASE_URL
+        sync: false
       - key: ADMIN_EMAIL
         sync: false
       - key: ADMIN_PASSWORD
@@ -24,11 +20,6 @@ services:
         sync: false
       - key: GEMINI_MODEL
         value: gemini-2.5-flash
-    disk:
-      name: brochat-data
-      mountPath: /var/data
-      sizeGB: 1
-
   - type: web
     name: brochat-frontend
     env: static

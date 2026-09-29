@@ -1,13 +1,12 @@
 import json
-import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from starlette.requests import Request
 
 from auth import pwd_context, require_admin
-from database import DB_PATH, execute_db, fetch_all, fetch_one
-from vector_store import get_collection
+from database import connect_database, execute_db, fetch_all, fetch_one
+from vector_store import delete_bot_knowledge, restore_vector_documents
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -44,8 +43,7 @@ async def restore_backup(request: Request):
 
     restored = {"users": 0, "bots": 0, "sources": 0, "conversations": 0, "vector_documents": 0}
     user_id_map = {}
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
+    connection = connect_database()
     try:
         connection.execute("BEGIN")
         for user in users:
@@ -111,20 +109,9 @@ async def restore_backup(request: Request):
             continue
         if not fetch_one("SELECT id FROM bots WHERE id = ?", (bot_id,)):
             continue
-        collection = get_collection(bot_id)
-        existing_ids = set(collection.get(ids=ids, include=[])["ids"])
-        missing_indexes = [index for index, item_id in enumerate(ids) if item_id not in existing_ids]
-        if not missing_indexes:
-            continue
-        values = {
-            "ids": [ids[index] for index in missing_indexes],
-            "documents": [documents[index] for index in missing_indexes],
-            "metadatas": [metadatas[index] for index in missing_indexes],
-        }
-        if embeddings is not None and len(embeddings) == len(ids):
-            values["embeddings"] = [embeddings[index] for index in missing_indexes]
-        collection.add(**values)
-        restored["vector_documents"] += len(missing_indexes)
+        restored["vector_documents"] += restore_vector_documents(
+            bot_id, ids, documents, metadatas, embeddings
+        )
 
     return {"status": "merged", "restored": restored}
 
@@ -189,8 +176,7 @@ def delete_user(user_id: str, current_user: dict = Depends(require_admin)):
     if user_id == current_user["id"]:
         raise HTTPException(status_code=400, detail="You cannot delete your own admin account")
 
-    connection = sqlite3.connect(DB_PATH)
-    connection.row_factory = sqlite3.Row
+    connection = connect_database()
     try:
         connection.execute("BEGIN IMMEDIATE")
         target = connection.execute("SELECT id, role FROM users WHERE id = ?", (user_id,)).fetchone()
@@ -199,7 +185,7 @@ def delete_user(user_id: str, current_user: dict = Depends(require_admin)):
         if target["role"] == "admin":
             raise HTTPException(status_code=403, detail="Admin accounts cannot be deleted here")
 
-        bot_ids = [row[0] for row in connection.execute("SELECT id FROM bots WHERE user_id = ?", (user_id,))]
+        bot_ids = [row["id"] for row in connection.execute("SELECT id FROM bots WHERE user_id = ?", (user_id,))]
         for bot_id in bot_ids:
             connection.execute("DELETE FROM conversations WHERE bot_id = ?", (bot_id,))
             connection.execute("DELETE FROM knowledge_sources WHERE bot_id = ?", (bot_id,))
@@ -217,10 +203,7 @@ def delete_user(user_id: str, current_user: dict = Depends(require_admin)):
 
     for bot_id in bot_ids:
         try:
-            from vector_store import client
-            collection_name = f"bot_{bot_id}"
-            if collection_name in {item.name for item in client.list_collections()}:
-                client.delete_collection(collection_name)
+            delete_bot_knowledge(bot_id)
         except Exception as error:
             print(f"Could not remove vector data for deleted bot {bot_id}: {error}")
 
