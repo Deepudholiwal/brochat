@@ -4,6 +4,7 @@ from pathlib import Path
 from datetime import datetime
 
 DB_PATH = Path(os.environ.get("DATABASE_PATH", Path(__file__).parent / "brochat.db"))
+LEGACY_DB_PATH = Path(__file__).parent / "brochat.db"
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -15,6 +16,15 @@ def get_db():
 
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+    if DB_PATH != LEGACY_DB_PATH and not DB_PATH.exists() and LEGACY_DB_PATH.exists():
+        legacy_conn = sqlite3.connect(LEGACY_DB_PATH)
+        persistent_conn = sqlite3.connect(DB_PATH)
+        try:
+            legacy_conn.backup(persistent_conn)
+        finally:
+            persistent_conn.close()
+            legacy_conn.close()
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
