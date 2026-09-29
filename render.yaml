@@ -4,6 +4,7 @@ services:
     env: python
     buildCommand: pip install -r backend/requirements.txt
     startCommand: cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT
+    autoDeployTrigger: commit
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.0
@@ -31,6 +32,7 @@ services:
     env: static
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
+    autoDeployTrigger: commit
     routes:
       - type: rewrite
         source: /*

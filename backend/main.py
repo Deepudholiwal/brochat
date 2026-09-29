@@ -46,7 +46,11 @@ WIDGET_PATH = Path(__file__).parent.parent / "widget" / "brochat-widget.js"
 def get_widget():
     if not WIDGET_PATH.exists():
         raise HTTPException(status_code=404, detail="Widget script not found")
-    return FileResponse(str(WIDGET_PATH), media_type="application/javascript")
+    return FileResponse(
+        str(WIDGET_PATH),
+        media_type="application/javascript",
+        headers={"Cache-Control": "no-store, no-cache, must-revalidate", "Pragma": "no-cache"},
+    )
 
 @app.get("/api/bots/{bot_id}/widget-config")
 def widget_config(bot_id: str):
