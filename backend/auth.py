@@ -77,8 +77,16 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
     return user
 
+
+def is_admin_account(user: dict) -> bool:
+    configured_admin_email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    return user.get("role") == "admin" or bool(
+        configured_admin_email and user.get("email", "").strip().lower() == configured_admin_email
+    )
+
+
 def require_admin(current_user: dict = Depends(get_current_user)):
-    if current_user.get("role") != "admin":
+    if not is_admin_account(current_user):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return current_user
 
@@ -132,4 +140,7 @@ def login(user: UserLogin):
 
 @router.get("/me", response_model=UserOut)
 def read_users_me(current_user: dict = Depends(get_current_user)):
-    return current_user
+    response = dict(current_user)
+    if is_admin_account(response):
+        response["role"] = "admin"
+    return response

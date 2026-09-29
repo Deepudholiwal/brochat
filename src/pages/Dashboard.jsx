@@ -67,7 +67,7 @@ export default function Dashboard() {
         <nav className="sidebar-nav">
           <a href="#" className="active"><Bot size={20} /> My Bots</a>
           <a href="#"><LinkIcon size={20} /> Settings</a>
-          {user?.role === 'admin' && <Link to="/admin"><ShieldCheck size={20} /> Admin</Link>}
+          <Link to="/admin"><ShieldCheck size={20} /> Admin</Link>
         </nav>
         <div className="sidebar-footer">
           <div className="user-info">
