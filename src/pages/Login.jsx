@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import { LogIn } from 'lucide-react';
 
-export default function Login() {
+export default function Login({ adminMode = false }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +17,7 @@ export default function Login() {
     try {
       const data = await api.login({ email, password });
       localStorage.setItem('brochat_token', data.access_token);
-      navigate('/dashboard');
+      navigate(adminMode ? '/admin' : '/dashboard');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -29,8 +29,8 @@ export default function Login() {
     <div className="auth-page">
       <div className="auth-card glass-panel">
         <div className="auth-header">
-          <h2>BroChat</h2>
-          <p>Welcome back</p>
+          <h2>{adminMode ? 'BroChat Admin' : 'BroChat'}</h2>
+          <p>{adminMode ? 'Administrator sign in' : 'Welcome back'}</p>
         </div>
         <form onSubmit={handleSubmit} className="auth-form">
           {error && <div className="auth-error">{error}</div>}
@@ -59,7 +59,9 @@ export default function Login() {
           </button>
         </form>
         <div className="auth-footer">
-          <p>Don't have an account? <Link to="/signup">Sign up</Link></p>
+          {adminMode
+            ? <p><Link to="/login">User sign in</Link></p>
+            : <p>Don't have an account? <Link to="/signup">Sign up</Link></p>}
         </div>
       </div>
     </div>

@@ -9,6 +9,7 @@ import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import BotDetail from './pages/BotDetail';
 import Admin from './pages/Admin';
+import AdminRoute from './components/AdminRoute';
 import ProtectedRoute from './components/ProtectedRoute';
 import { API_BASE } from './utils/api';
 
@@ -125,10 +126,11 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/admin/login" element={<Login adminMode />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/bot/:id" element={<ProtectedRoute><BotDetail /></ProtectedRoute>} />
-        <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+        <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
       </Routes>
     </BrowserRouter>
   );
