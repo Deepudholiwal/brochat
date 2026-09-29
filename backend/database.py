@@ -3,8 +3,57 @@ import os
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path(os.environ.get("DATABASE_PATH", Path(__file__).parent / "brochat.db"))
+def is_render_runtime() -> bool:
+    return os.environ.get("RENDER", "").lower() == "true" or bool(os.environ.get("RENDER_SERVICE_ID"))
+
+
+DEFAULT_DATA_DIR = Path(__file__).parent / "chroma_data"
+RENDER_DATA_DIR = Path("/app/backend/chroma_data")
+DATA_DIR = Path(os.environ.get(
+    "BROCHAT_DATA_DIR",
+    RENDER_DATA_DIR if is_render_runtime() else DEFAULT_DATA_DIR,
+))
+DEFAULT_DB_PATH = DATA_DIR / "brochat.db" if is_render_runtime() else Path(__file__).parent / "brochat.db"
+DB_PATH = Path(os.environ.get("DATABASE_PATH", DEFAULT_DB_PATH))
 LEGACY_DB_PATH = Path(__file__).parent / "brochat.db"
+MOUNT_INFO_PATH = Path("/proc/self/mountinfo")
+
+
+def validate_persistent_storage() -> bool:
+    configured_root = os.environ.get("BROCHAT_DATA_DIR")
+    if not configured_root and is_render_runtime():
+        configured_root = str(RENDER_DATA_DIR)
+    if not configured_root:
+        return False
+
+    root = Path(configured_root).resolve()
+    if not MOUNT_INFO_PATH.exists():
+        raise RuntimeError("Cannot verify the configured persistent data disk mount")
+
+    mounted_paths = set()
+    for line in MOUNT_INFO_PATH.read_text(encoding="utf-8").splitlines():
+        fields = line.split()
+        if len(fields) > 4:
+            mount_path = fields[4].replace("\\040", " ").replace("\\011", "\t")
+            mounted_paths.add(Path(mount_path).resolve())
+
+    if root not in mounted_paths:
+        raise RuntimeError(
+            f"Persistent disk is not mounted at {root}. Attach the brochat-data disk at this exact path before deploying."
+        )
+
+    configured_paths = {
+        "DATABASE_PATH": Path(os.environ.get("DATABASE_PATH", root / "brochat.db")),
+        "CHROMA_PATH": Path(os.environ.get("CHROMA_PATH", root / "chroma")),
+    }
+    for name, configured_path in configured_paths.items():
+        try:
+            configured_path.resolve().relative_to(root)
+        except ValueError as error:
+            raise RuntimeError(f"{name} must be located inside the persistent disk at {root}") from error
+
+    print(f"Persistent data disk verified at {root}")
+    return True
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -15,6 +64,7 @@ def get_db():
         conn.close()
 
 def init_db():
+    validate_persistent_storage()
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     if DB_PATH != LEGACY_DB_PATH and not DB_PATH.exists() and LEGACY_DB_PATH.exists():
         legacy_conn = sqlite3.connect(LEGACY_DB_PATH)

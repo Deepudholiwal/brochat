@@ -3,10 +3,17 @@ import os
 from pathlib import Path
 import hashlib
 import shutil
+from database import DATA_DIR, is_render_runtime
 
 LEGACY_CHROMA_DIR = Path(__file__).parent / "chroma_data"
-CHROMA_DIR = Path(os.environ.get("CHROMA_PATH", LEGACY_CHROMA_DIR))
-if CHROMA_DIR != LEGACY_CHROMA_DIR and not CHROMA_DIR.exists() and LEGACY_CHROMA_DIR.exists():
+DEFAULT_CHROMA_DIR = DATA_DIR if is_render_runtime() else LEGACY_CHROMA_DIR
+CHROMA_DIR = Path(os.environ.get("CHROMA_PATH", DEFAULT_CHROMA_DIR))
+if (
+    CHROMA_DIR != LEGACY_CHROMA_DIR
+    and LEGACY_CHROMA_DIR not in CHROMA_DIR.resolve().parents
+    and not CHROMA_DIR.exists()
+    and LEGACY_CHROMA_DIR.exists()
+):
     shutil.copytree(LEGACY_CHROMA_DIR, CHROMA_DIR)
 
 client = chromadb.PersistentClient(path=str(CHROMA_DIR))
