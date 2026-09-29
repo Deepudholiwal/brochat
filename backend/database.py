@@ -1,8 +1,9 @@
 import sqlite3
+import os
 from pathlib import Path
 from datetime import datetime
 
-DB_PATH = Path(__file__).parent / "brochat.db"
+DB_PATH = Path(os.environ.get("DATABASE_PATH", Path(__file__).parent / "brochat.db"))
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
