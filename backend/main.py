@@ -26,6 +26,10 @@ app.include_router(bots.router)
 app.include_router(knowledge.router)
 app.include_router(chat.router)
 
+@app.get("/")
+def root():
+    return {"status": "Brochat backend is running"}
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
