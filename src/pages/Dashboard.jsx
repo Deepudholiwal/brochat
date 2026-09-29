@@ -11,7 +11,7 @@ export default function Dashboard() {
   
   // Modal state
   const [newBotName, setNewBotName] = useState('');
-  const [newBotWelcome, setNewBotWelcome] = useState('Hi! How can I help you today?');
+  const [newBotWelcome, setNewBotWelcome] = useState('Hello! How can I help you? You can ask me about the tools, features, or services on this website.');
   const [newBotColor, setNewBotColor] = useState('#c6ff6d');
   
   const navigate = useNavigate();

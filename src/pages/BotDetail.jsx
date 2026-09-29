@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { api, API_BASE } from '../utils/api';
-import { ArrowLeft, Globe, Copy, Check, Trash2, Clock, CheckCircle, Loader } from 'lucide-react';
+import { ArrowLeft, Globe, Copy, Check, Trash2, Clock, CheckCircle, Loader, RotateCw } from 'lucide-react';
 
 export default function BotDetail() {
   const { id } = useParams();
@@ -12,6 +12,7 @@ export default function BotDetail() {
   const [loading, setLoading] = useState(true);
   const [urlInput, setUrlInput] = useState('');
   const [copied, setCopied] = useState(false);
+  const [refreshingSourceId, setRefreshingSourceId] = useState('');
   
   // Customization state
   const [editName, setEditName] = useState('');
@@ -62,6 +63,18 @@ export default function BotDetail() {
       fetchData();
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleRefreshSource = async (sourceId) => {
+    setRefreshingSourceId(sourceId);
+    try {
+      await api.refreshSource(id, sourceId);
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRefreshingSourceId('');
     }
   };
 
@@ -147,7 +160,16 @@ export default function BotDetail() {
                           <span className="page-count">{source.pages_scraped || 0} pages</span>
                         </div>
                       </div>
-                      <button className="icon-btn delete" onClick={() => handleDeleteSource(source.id)}>
+                      <button
+                        className="icon-btn"
+                        title="Refresh website content and tool links"
+                        aria-label={`Refresh ${source.url}`}
+                        disabled={refreshingSourceId === source.id}
+                        onClick={() => handleRefreshSource(source.id)}
+                      >
+                        {refreshingSourceId === source.id ? <Loader className="pulse" size={17} /> : <RotateCw size={17} />}
+                      </button>
+                      <button className="icon-btn delete" aria-label={`Delete ${source.url}`} onClick={() => handleDeleteSource(source.id)}>
                         <Trash2 size={18} />
                       </button>
                     </li>

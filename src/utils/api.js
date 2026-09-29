@@ -30,6 +30,7 @@ export const api = {
   deleteBot: (id) => apiFetch(`/api/bots/${id}`, { method: 'DELETE' }),
   getSources: (botId) => apiFetch(`/api/bots/${botId}/sources`),
   addSource: (botId, data) => apiFetch(`/api/bots/${botId}/sources`, { method: 'POST', body: JSON.stringify(data) }),
+  refreshSource: (botId, sourceId) => apiFetch(`/api/bots/${botId}/sources/${sourceId}/refresh`, { method: 'POST' }),
   deleteSource: (botId, sourceId) => apiFetch(`/api/bots/${botId}/sources/${sourceId}`, { method: 'DELETE' }),
   getConversations: (botId) => apiFetch(`/api/bots/${botId}/conversations`),
   chat: (botId, data) => apiFetch(`/api/chat/${botId}`, { method: 'POST', body: JSON.stringify(data) }),

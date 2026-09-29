@@ -57,6 +57,43 @@ def list_sources(bot_id: str, current_user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Bot not found")
     return fetch_all("SELECT * FROM knowledge_sources WHERE bot_id = ?", (bot_id,))
 
+
+@router.post("/{bot_id}/sources/{source_id}/refresh", response_model=SourceOut)
+async def refresh_source(bot_id: str, source_id: str, current_user: dict = Depends(get_current_user)):
+    bot = fetch_one("SELECT * FROM bots WHERE id = ? AND user_id = ?", (bot_id, current_user["id"]))
+    if not bot:
+        raise HTTPException(status_code=404, detail="Bot not found")
+
+    source = fetch_one("SELECT * FROM knowledge_sources WHERE id = ? AND bot_id = ?", (source_id, bot_id))
+    if not source:
+        raise HTTPException(status_code=404, detail="Source not found")
+
+    execute_db("UPDATE knowledge_sources SET status = 'scraping' WHERE id = ?", (source_id,))
+    try:
+        scraped_pages = await scrape_url(source["url"])
+        if not scraped_pages:
+            raise HTTPException(status_code=502, detail="The website could not be scraped")
+
+        for page in scraped_pages:
+            delete_source_chunks(bot_id, page["url"])
+            chunks = chunk_text(page["content"])
+            add_chunks(bot_id, page["url"], chunks, page["title"])
+
+        execute_db(
+            "UPDATE knowledge_sources SET status = 'ready', pages_scraped = ? WHERE id = ?",
+            (len(scraped_pages), source_id)
+        )
+    except HTTPException:
+        execute_db("UPDATE knowledge_sources SET status = 'failed' WHERE id = ?", (source_id,))
+        raise
+    except Exception as error:
+        execute_db("UPDATE knowledge_sources SET status = 'failed' WHERE id = ?", (source_id,))
+        print(f"Source refresh error for {source_id}: {error}")
+        raise HTTPException(status_code=502, detail="The website could not be refreshed") from error
+
+    return fetch_one("SELECT * FROM knowledge_sources WHERE id = ?", (source_id,))
+
+
 @router.delete("/{bot_id}/sources/{source_id}")
 def delete_source(bot_id: str, source_id: str, current_user: dict = Depends(get_current_user)):
     bot = fetch_one("SELECT * FROM bots WHERE id = ? AND user_id = ?", (bot_id, current_user["id"]))

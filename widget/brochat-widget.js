@@ -248,6 +248,13 @@
         text-align: right;
       }
 
+      .brochat-message a {
+        color: #1769aa;
+        text-decoration: underline;
+        overflow-wrap: anywhere;
+      }
+      .brochat-message.user a { color: #ffffff; }
+
       .brochat-typing {
         display: none;
         align-items: center;
@@ -427,7 +434,7 @@
     if (botInfo.welcomeMessage) {
       appendMessage(botInfo.welcomeMessage, 'bot');
     } else {
-      appendMessage('Hi there! How can I help you today?', 'bot');
+      appendMessage('Hello! How can I help you? You can ask me about the tools, features, or services on this website.', 'bot');
     }
 
     function formatTime() {
@@ -446,7 +453,7 @@
       msgDiv.className = 'brochat-message ' + sender;
       
       const content = document.createElement('div');
-      content.textContent = text;
+      appendMessageContent(content, text);
       msgDiv.appendChild(content);
 
       const timeDiv = document.createElement('div');
@@ -456,6 +463,32 @@
 
       messagesEl.insertBefore(msgDiv, typingEl);
       scrollToBottom();
+    }
+
+    function appendMessageContent(containerEl, text) {
+      const urlPattern = /https?:\/\/[^\s<>"')\]]+/gi;
+      let cursor = 0;
+      let match;
+      while ((match = urlPattern.exec(text)) !== null) {
+        const cleanUrl = match[0].replace(/[.,;:!?]+$/, '');
+        try {
+          const parsedUrl = new URL(cleanUrl);
+          if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') continue;
+        } catch {
+          continue;
+        }
+
+        containerEl.appendChild(document.createTextNode(text.slice(cursor, match.index)));
+        const link = document.createElement('a');
+        link.href = cleanUrl;
+        link.textContent = cleanUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        containerEl.appendChild(link);
+        cursor = match.index + cleanUrl.length;
+        urlPattern.lastIndex = cursor;
+      }
+      containerEl.appendChild(document.createTextNode(text.slice(cursor)));
     }
 
     function scrollToBottom() {

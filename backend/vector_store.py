@@ -28,7 +28,7 @@ def add_chunks(bot_id: str, source_url: str, chunks: list[str], page_title: str)
         documents.append(chunk)
         
     if documents:
-        collection.add(
+        collection.upsert(
             documents=documents,
             metadatas=metadatas,
             ids=ids
