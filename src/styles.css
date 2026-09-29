@@ -659,3 +659,42 @@ body {
   .bot-detail-header { padding: 20px; }
   .bot-detail-content { padding: 20px; }
 }
+
+.admin-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.admin-header h1 { margin: 0; font-size: 28px; }
+.admin-header p { margin: 5px 0 0; color: var(--text-muted); font-size: 13px; }
+.admin-workspace { display: grid; grid-template-columns: minmax(300px, .9fr) minmax(360px, 1.1fr); gap: 20px; align-items: start; }
+.admin-panel { min-width: 0; padding: 20px; }
+.admin-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--border-color); }
+.admin-panel-heading h2 { margin: 0; font-size: 17px; }
+.admin-count { color: var(--text-muted); font-size: 12px; }
+.admin-account-list { display: grid; max-height: 64vh; overflow: auto; }
+.admin-account { display: grid; gap: 4px; width: 100%; padding: 13px 8px; border: 0; border-bottom: 1px solid var(--border-color); background: transparent; color: var(--text-main); text-align: left; }
+.admin-account:hover, .admin-account.selected { background: #edf4ed; }
+.admin-account-name { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 13px; font-weight: 700; }
+.admin-account-email { overflow-wrap: anywhere; color: var(--text-muted); font-size: 12px; }
+.admin-account-meta { color: #778b83; font-size: 11px; }
+.admin-role { padding: 3px 7px; border-radius: 4px; background: #e4f2dc; color: #37654c; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.admin-detail-stack { display: grid; gap: 16px; }
+.admin-selected-user { padding: 14px 0 2px; }
+.admin-selected-user h3 { margin: 0 0 4px; font-size: 16px; }
+.admin-selected-user p { margin: 0; overflow-wrap: anywhere; color: var(--text-muted); font-size: 12px; }
+.admin-reset-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 14px; }
+.admin-reset-form input, .admin-bot-form input, .admin-bot-form textarea, .admin-bot-form select { width: 100%; min-width: 0; padding: 10px 11px; border: 1px solid var(--border-color); border-radius: 6px; background: #fff; color: var(--text-main); font: inherit; font-size: 12px; }
+.admin-reset-form button, .admin-bot-form button { border: 0; border-radius: 6px; padding: 9px 12px; background: var(--primary-dark); color: #fff; font-size: 12px; font-weight: 700; }
+.admin-bot-list { display: grid; gap: 8px; margin-top: 12px; }
+.admin-bot-item { display: flex; justify-content: space-between; align-items: center; gap: 12px; width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 6px; background: white; color: var(--text-main); text-align: left; }
+.admin-bot-item:hover, .admin-bot-item.selected { border-color: #6d9b81; background: #f3f8f2; }
+.admin-bot-item strong, .admin-bot-item small { display: block; }
+.admin-bot-item strong { font-size: 12px; }
+.admin-bot-item small { margin-top: 4px; color: var(--text-muted); font-size: 10px; }
+.admin-bot-form { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--border-color); }
+.admin-bot-form h3 { margin: 0; font-size: 14px; }
+.admin-bot-form label { display: grid; gap: 5px; color: var(--text-muted); font-size: 11px; font-weight: 700; }
+.admin-bot-form textarea { resize: vertical; }
+.admin-notice { margin: 12px 0 0; color: var(--success-color); font-size: 12px; }
+.admin-error { margin: 12px 0 0; color: var(--error-color); font-size: 12px; }
+.admin-empty { padding: 24px 6px; color: var(--text-muted); font-size: 13px; }
+.admin-back { display: inline-flex; align-items: center; gap: 7px; color: var(--text-muted); text-decoration: none; font-size: 12px; }
+@media (max-width: 900px) { .admin-workspace { grid-template-columns: minmax(260px, .8fr) minmax(300px, 1.2fr); gap: 12px; } .admin-panel { padding: 15px; } }
+@media (max-width: 700px) { .admin-workspace { grid-template-columns: 1fr; } .admin-account-list { max-height: 38vh; } .admin-header { align-items: flex-start; } .admin-reset-form { grid-template-columns: 1fr; } }

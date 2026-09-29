@@ -24,9 +24,17 @@ def init_db():
             name TEXT,
             email TEXT UNIQUE,
             password_hash TEXT,
+            role TEXT NOT NULL DEFAULT 'user',
+            auth_version INTEGER NOT NULL DEFAULT 0,
             created_at TIMESTAMP
         )
     ''')
+
+    user_columns = {row[1] for row in cursor.execute("PRAGMA table_info(users)")}
+    if "role" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
+    if "auth_version" not in user_columns:
+        cursor.execute("ALTER TABLE users ADD COLUMN auth_version INTEGER NOT NULL DEFAULT 0")
     
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS bots (
@@ -60,6 +68,13 @@ def init_db():
             messages TEXT,
             created_at TIMESTAMP,
             FOREIGN KEY(bot_id) REFERENCES bots(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         )
     ''')
     

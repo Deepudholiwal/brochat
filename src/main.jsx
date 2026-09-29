@@ -8,6 +8,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Dashboard from './pages/Dashboard';
 import BotDetail from './pages/BotDetail';
+import Admin from './pages/Admin';
 import ProtectedRoute from './components/ProtectedRoute';
 import { API_BASE } from './utils/api';
 
@@ -127,6 +128,7 @@ function App() {
         <Route path="/signup" element={<Signup />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/bot/:id" element={<ProtectedRoute><BotDetail /></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   );

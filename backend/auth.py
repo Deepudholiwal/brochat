@@ -4,6 +4,8 @@ from pydantic import BaseModel, EmailStr
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
+import os
+import secrets
 import uuid
 
 from database import fetch_one, execute_db
@@ -13,9 +15,22 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-SECRET_KEY = "brochat-secret-key-change-in-production"
+SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
+
+def get_signing_key():
+    if SECRET_KEY:
+        return SECRET_KEY
+    setting = fetch_one("SELECT value FROM app_settings WHERE key = ?", ("jwt_secret_key",))
+    if setting:
+        return setting["value"]
+    generated_key = secrets.token_urlsafe(48)
+    execute_db(
+        "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)",
+        ("jwt_secret_key", generated_key)
+    )
+    return fetch_one("SELECT value FROM app_settings WHERE key = ?", ("jwt_secret_key",))["value"]
 
 class UserCreate(BaseModel):
     name: str
@@ -34,13 +49,14 @@ class UserOut(BaseModel):
     id: str
     name: str
     email: str
+    role: str
     created_at: str
 
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, get_signing_key(), algorithm=ALGORITHM)
 
 def get_current_user(token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
@@ -49,7 +65,7 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(token, get_signing_key(), algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise credentials_exception
@@ -57,9 +73,36 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
         
     user = fetch_one("SELECT * FROM users WHERE id = ?", (user_id,))
-    if user is None:
+    if user is None or payload.get("auth_version", 0) != user.get("auth_version", 0):
         raise credentials_exception
     return user
+
+def require_admin(current_user: dict = Depends(get_current_user)):
+    if current_user.get("role") != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
+    return current_user
+
+def bootstrap_admin():
+    email = os.environ.get("ADMIN_EMAIL", "").strip().lower()
+    password = os.environ.get("ADMIN_PASSWORD", "")
+    if not email and not password:
+        return
+    if not email or len(password) < 12:
+        raise RuntimeError("Set both ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters")
+
+    existing = fetch_one("SELECT id, role FROM users WHERE lower(email) = lower(?)", (email,))
+    if existing:
+        if existing["role"] != "admin":
+            execute_db(
+                "UPDATE users SET role = 'admin', password_hash = ?, auth_version = auth_version + 1 WHERE id = ?",
+                (pwd_context.hash(password), existing["id"])
+            )
+        return
+
+    execute_db(
+        "INSERT INTO users (id, name, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, 'admin', ?)",
+        (str(uuid.uuid4()), "BroChat Admin", email, pwd_context.hash(password), datetime.utcnow().isoformat())
+    )
 
 @router.post("/signup", response_model=Token)
 def signup(user: UserCreate):
@@ -75,7 +118,7 @@ def signup(user: UserCreate):
         (user_id, user.name, user.email, hashed_password, datetime.utcnow().isoformat())
     )
     
-    access_token = create_access_token(data={"sub": user_id})
+    access_token = create_access_token(data={"sub": user_id, "auth_version": 0})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/login", response_model=Token)
@@ -84,7 +127,7 @@ def login(user: UserLogin):
     if not db_user or not pwd_context.verify(user.password, db_user["password_hash"]):
         raise HTTPException(status_code=401, detail="Incorrect email or password")
         
-    access_token = create_access_token(data={"sub": db_user["id"]})
+    access_token = create_access_token(data={"sub": db_user["id"], "auth_version": db_user.get("auth_version", 0)})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/me", response_model=UserOut)

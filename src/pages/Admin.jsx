@@ -1,0 +1,223 @@
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeft, LogOut, Save, ShieldCheck } from 'lucide-react';
+import { api, logout } from '../utils/api';
+
+export default function Admin() {
+  const [users, setUsers] = useState([]);
+  const [selectedUserId, setSelectedUserId] = useState('');
+  const [bots, setBots] = useState([]);
+  const [selectedBotId, setSelectedBotId] = useState('');
+  const [botDraft, setBotDraft] = useState(null);
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  const selectedUser = users.find((user) => user.id === selectedUserId);
+  const selectedBot = bots.find((bot) => bot.id === selectedBotId);
+
+  useEffect(() => {
+    let active = true;
+    api.getAdminUsers()
+      .then((data) => {
+        if (!active) return;
+        setUsers(data);
+        setSelectedUserId(data[0]?.id || '');
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedUserId) {
+      setBots([]);
+      setSelectedBotId('');
+      return undefined;
+    }
+
+    let active = true;
+    setBots([]);
+    setSelectedBotId('');
+    setBotDraft(null);
+    api.getAdminUserBots(selectedUserId)
+      .then((data) => {
+        if (!active) return;
+        setBots(data);
+        setSelectedBotId(data[0]?.id || '');
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError.message);
+      });
+    return () => { active = false; };
+  }, [selectedUserId]);
+
+  useEffect(() => {
+    if (selectedBot) {
+      setBotDraft({
+        name: selectedBot.name,
+        welcome_message: selectedBot.welcome_message,
+        theme_color: selectedBot.theme_color || '#c6ff6d',
+      });
+    } else {
+      setBotDraft(null);
+    }
+  }, [selectedBotId, bots]);
+
+  async function handlePasswordReset(event) {
+    event.preventDefault();
+    if (!selectedUser || password.length < 12) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      await api.resetAdminUserPassword(selectedUser.id, password);
+      setPassword('');
+      setNotice(`Password updated for ${selectedUser.email}.`);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleBotSave(event) {
+    event.preventDefault();
+    if (!selectedBot || !botDraft) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const updated = await api.updateAdminBot(selectedBot.id, botDraft);
+      setBots((current) => current.map((bot) => bot.id === updated.id ? { ...bot, ...updated } : bot));
+      setNotice('Bot settings saved.');
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="dashboard-layout">
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-header"><h2>BroChat</h2></div>
+        <nav className="sidebar-nav">
+          <Link to="/dashboard"><ArrowLeft size={18} /> Workspace</Link>
+          <Link to="/admin" className="active"><ShieldCheck size={18} /> Administration</Link>
+        </nav>
+        <div className="sidebar-footer">
+          <div className="user-info">
+            <span>Administrator</span>
+            <button onClick={logout} className="logout-btn" aria-label="Sign out"><LogOut size={16} /></button>
+          </div>
+        </div>
+      </aside>
+
+      <main className="dashboard-content">
+        <header className="admin-header">
+          <div>
+            <h1>Account administration</h1>
+            <p>Review user accounts, reset passwords, and manage bot settings.</p>
+          </div>
+          <span className="admin-count">{users.length} accounts</span>
+        </header>
+
+        {loading ? <div className="loading-screen">Loading accounts...</div> : (
+          <div className="admin-workspace">
+            <section className="admin-panel glass-panel" aria-labelledby="admin-accounts-heading">
+              <div className="admin-panel-heading">
+                <h2 id="admin-accounts-heading">Accounts</h2>
+                <span className="admin-count">{users.length}</span>
+              </div>
+              {users.length ? (
+                <div className="admin-account-list">
+                  {users.map((user) => (
+                    <button
+                      key={user.id}
+                      className={`admin-account${user.id === selectedUserId ? ' selected' : ''}`}
+                      onClick={() => { setSelectedUserId(user.id); setError(''); setNotice(''); }}
+                    >
+                      <span className="admin-account-name">
+                        {user.name || 'Unnamed account'}
+                        <span className="admin-role">{user.role}</span>
+                      </span>
+                      <span className="admin-account-email">{user.email}</span>
+                      <span className="admin-account-meta">{user.bot_count} bots</span>
+                    </button>
+                  ))}
+                </div>
+              ) : <p className="admin-empty">No accounts found.</p>}
+            </section>
+
+            <section className="admin-panel glass-panel" aria-label="Selected account management">
+              {!selectedUser ? (
+                <div className="admin-empty">{error || 'Select an account to view its bots and manage access.'}</div>
+              ) : (
+                <div className="admin-detail-stack">
+                  <div className="admin-selected-user">
+                    <h3>{selectedUser.name}</h3>
+                    <p>{selectedUser.email}</p>
+                    <form className="admin-reset-form" onSubmit={handlePasswordReset}>
+                      <input
+                        aria-label="New account password"
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={12}
+                        maxLength={128}
+                        placeholder="New password (12+ characters)"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        required
+                      />
+                      <button type="submit" disabled={saving || password.length < 12}>Set password</button>
+                    </form>
+                  </div>
+
+                  <div>
+                    <div className="admin-panel-heading">
+                      <h2>Chatbots</h2>
+                      <span className="admin-count">{bots.length}</span>
+                    </div>
+                    {bots.length ? (
+                      <div className="admin-bot-list">
+                        {bots.map((bot) => (
+                          <button
+                            key={bot.id}
+                            className={`admin-bot-item${bot.id === selectedBotId ? ' selected' : ''}`}
+                            onClick={() => setSelectedBotId(bot.id)}
+                          >
+                            <span><strong>{bot.name}</strong><small>{bot.source_count} sources · {bot.conversation_count} conversations</small></span>
+                            <span className="bot-color-dot" style={{ backgroundColor: bot.theme_color }} />
+                          </button>
+                        ))}
+                      </div>
+                    ) : <p className="admin-empty">This account has no chatbots.</p>}
+                  </div>
+
+                  {botDraft && (
+                    <form className="admin-bot-form" onSubmit={handleBotSave}>
+                      <h3>Edit chatbot</h3>
+                      <label>Bot name<input maxLength={120} value={botDraft.name} onChange={(event) => setBotDraft({ ...botDraft, name: event.target.value })} required /></label>
+                      <label>Welcome message<textarea maxLength={2000} rows={3} value={botDraft.welcome_message} onChange={(event) => setBotDraft({ ...botDraft, welcome_message: event.target.value })} required /></label>
+                      <label>Theme color<input type="color" value={botDraft.theme_color} onChange={(event) => setBotDraft({ ...botDraft, theme_color: event.target.value })} /></label>
+                      <button type="submit" disabled={saving}><Save size={15} /> Save bot settings</button>
+                    </form>
+                  )}
+                </div>
+              )}
+              {error && selectedUser && <p className="admin-error" role="alert">{error}</p>}
+              {notice && <p className="admin-notice" role="status">{notice}</p>}
+            </section>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

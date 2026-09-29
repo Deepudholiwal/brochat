@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { api, logout } from '../utils/api';
-import { Bot, MessageSquare, Link as LinkIcon, Plus, LogOut, X } from 'lucide-react';
+import { Bot, MessageSquare, Link as LinkIcon, Plus, LogOut, ShieldCheck, X } from 'lucide-react';
 
 export default function Dashboard() {
   const [bots, setBots] = useState([]);
@@ -67,6 +67,7 @@ export default function Dashboard() {
         <nav className="sidebar-nav">
           <a href="#" className="active"><Bot size={20} /> My Bots</a>
           <a href="#"><LinkIcon size={20} /> Settings</a>
+          {user?.role === 'admin' && <Link to="/admin"><ShieldCheck size={20} /> Admin</Link>}
         </nav>
         <div className="sidebar-footer">
           <div className="user-info">

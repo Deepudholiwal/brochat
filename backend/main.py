@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db, fetch_one
 import auth
+import admin as admin_api
 import bots
 import knowledge
 import chat
@@ -20,8 +21,10 @@ app.add_middleware(
 @app.on_event("startup")
 def startup_event():
     init_db()
+    auth.bootstrap_admin()
 
 app.include_router(auth.router)
+app.include_router(admin_api.router)
 app.include_router(bots.router)
 app.include_router(knowledge.router)
 app.include_router(chat.router)

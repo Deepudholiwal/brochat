@@ -33,6 +33,10 @@ export const api = {
   deleteSource: (botId, sourceId) => apiFetch(`/api/bots/${botId}/sources/${sourceId}`, { method: 'DELETE' }),
   getConversations: (botId) => apiFetch(`/api/bots/${botId}/conversations`),
   chat: (botId, data) => apiFetch(`/api/chat/${botId}`, { method: 'POST', body: JSON.stringify(data) }),
+  getAdminUsers: () => apiFetch('/api/admin/users'),
+  getAdminUserBots: (userId) => apiFetch(`/api/admin/users/${userId}/bots`),
+  updateAdminBot: (botId, data) => apiFetch(`/api/admin/bots/${botId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  resetAdminUserPassword: (userId, password) => apiFetch(`/api/admin/users/${userId}/password`, { method: 'POST', body: JSON.stringify({ password }) }),
 };
 
 export function isLoggedIn() { return !!localStorage.getItem('brochat_token'); }
