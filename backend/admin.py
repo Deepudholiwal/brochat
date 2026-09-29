@@ -1,8 +1,13 @@
+import json
+import sqlite3
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
+from starlette.requests import Request
 
 from auth import pwd_context, require_admin
-from database import execute_db, fetch_all, fetch_one
+from database import DB_PATH, execute_db, fetch_all, fetch_one
+from vector_store import get_collection
 
 router = APIRouter(prefix="/api/admin", tags=["admin"], dependencies=[Depends(require_admin)])
 
@@ -15,6 +20,113 @@ class BotUpdate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     welcome_message: str = Field(min_length=1, max_length=2000)
     theme_color: str = Field(pattern=r"^#[0-9a-fA-F]{6}$")
+
+
+@router.post("/restore")
+async def restore_backup(request: Request):
+    payload = await request.body()
+    if len(payload) > 20 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Backup file must be smaller than 20 MB")
+    try:
+        backup = json.loads(payload)
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise HTTPException(status_code=400, detail="Invalid backup JSON") from error
+    if backup.get("format") != "brochat-backup" or backup.get("version") != 1:
+        raise HTTPException(status_code=400, detail="Unsupported backup format")
+
+    users = backup.get("users", [])
+    bots = backup.get("bots", [])
+    sources = backup.get("knowledge_sources", [])
+    conversations = backup.get("conversations", [])
+    vector_collections = backup.get("vector_collections", [])
+    if any(not isinstance(items, list) for items in (users, bots, sources, conversations, vector_collections)):
+        raise HTTPException(status_code=400, detail="Backup sections must be arrays")
+
+    restored = {"users": 0, "bots": 0, "sources": 0, "conversations": 0, "vector_documents": 0}
+    user_id_map = {}
+    connection = sqlite3.connect(DB_PATH)
+    connection.row_factory = sqlite3.Row
+    try:
+        connection.execute("BEGIN")
+        for user in users:
+            old_id = str(user.get("id", ""))
+            email = str(user.get("email", "")).strip()
+            password_hash = str(user.get("password_hash", ""))
+            if not old_id or not email or not password_hash:
+                continue
+            existing = connection.execute("SELECT id FROM users WHERE lower(email) = lower(?)", (email,)).fetchone()
+            target_id = existing["id"] if existing else old_id
+            cursor = connection.execute(
+                """
+                INSERT OR IGNORE INTO users (id, name, email, password_hash, role, auth_version, created_at)
+                VALUES (?, ?, ?, ?, 'user', 0, ?)
+                """,
+                (target_id, str(user.get("name", "")), email, password_hash, user.get("created_at")),
+            )
+            restored["users"] += max(cursor.rowcount, 0)
+            user_id_map[old_id] = target_id
+
+        for bot in bots:
+            bot_id = str(bot.get("id", ""))
+            owner_id = user_id_map.get(str(bot.get("user_id", "")), str(bot.get("user_id", "")))
+            if not bot_id or not connection.execute("SELECT id FROM users WHERE id = ?", (owner_id,)).fetchone():
+                continue
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO bots (id, user_id, name, welcome_message, theme_color, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (bot_id, owner_id, bot.get("name", ""), bot.get("welcome_message", ""), bot.get("theme_color", "#c6ff6d"), bot.get("created_at")),
+            )
+            restored["bots"] += max(cursor.rowcount, 0)
+
+        for source in sources:
+            if not connection.execute("SELECT id FROM bots WHERE id = ?", (source.get("bot_id"),)).fetchone():
+                continue
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO knowledge_sources (id, bot_id, url, status, pages_scraped, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (source.get("id"), source.get("bot_id"), source.get("url"), source.get("status", "ready"), source.get("pages_scraped", 0), source.get("created_at")),
+            )
+            restored["sources"] += max(cursor.rowcount, 0)
+
+        for conversation in conversations:
+            if not connection.execute("SELECT id FROM bots WHERE id = ?", (conversation.get("bot_id"),)).fetchone():
+                continue
+            cursor = connection.execute(
+                "INSERT OR IGNORE INTO conversations (id, bot_id, visitor_id, messages, created_at) VALUES (?, ?, ?, ?, ?)",
+                (conversation.get("id"), conversation.get("bot_id"), conversation.get("visitor_id", ""), conversation.get("messages", "[]"), conversation.get("created_at")),
+            )
+            restored["conversations"] += max(cursor.rowcount, 0)
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+    for collection_data in vector_collections:
+        bot_id = str(collection_data.get("bot_id", ""))
+        ids = collection_data.get("ids", [])
+        documents = collection_data.get("documents", [])
+        metadatas = collection_data.get("metadatas", [])
+        embeddings = collection_data.get("embeddings")
+        if not bot_id or not ids or not (len(ids) == len(documents) == len(metadatas)):
+            continue
+        if not fetch_one("SELECT id FROM bots WHERE id = ?", (bot_id,)):
+            continue
+        collection = get_collection(bot_id)
+        existing_ids = set(collection.get(ids=ids, include=[])["ids"])
+        missing_indexes = [index for index, item_id in enumerate(ids) if item_id not in existing_ids]
+        if not missing_indexes:
+            continue
+        values = {
+            "ids": [ids[index] for index in missing_indexes],
+            "documents": [documents[index] for index in missing_indexes],
+            "metadatas": [metadatas[index] for index in missing_indexes],
+        }
+        if embeddings is not None and len(embeddings) == len(ids):
+            values["embeddings"] = [embeddings[index] for index in missing_indexes]
+        collection.add(**values)
+        restored["vector_documents"] += len(missing_indexes)
+
+    return {"status": "merged", "restored": restored}
 
 
 @router.get("/users")

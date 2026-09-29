@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, LogOut, Save, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, LogOut, Save, ShieldCheck, Upload } from 'lucide-react';
 import { api, logout } from '../utils/api';
 
 export default function Admin() {
@@ -10,6 +10,7 @@ export default function Admin() {
   const [selectedBotId, setSelectedBotId] = useState('');
   const [botDraft, setBotDraft] = useState(null);
   const [password, setPassword] = useState('');
+  const [backupFile, setBackupFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -104,6 +105,34 @@ export default function Admin() {
     }
   }
 
+  async function handleBackupRestore(event) {
+    event.preventDefault();
+    if (!backupFile) return;
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const backup = JSON.parse(await backupFile.text());
+      const result = await api.restoreAdminBackup(backup);
+      const counts = result.restored;
+      setNotice(`Merged ${counts.users} accounts, ${counts.bots} bots, ${counts.sources} sources, ${counts.conversations} conversations, and ${counts.vector_documents} knowledge records.`);
+      setBackupFile(null);
+      const input = event.currentTarget.querySelector('input[type="file"]');
+      if (input) input.value = '';
+      const updatedUsers = await api.getAdminUsers();
+      setUsers(updatedUsers);
+      if (selectedUserId && updatedUsers.some((user) => user.id === selectedUserId)) {
+        setSelectedUserId(selectedUserId);
+      } else {
+        setSelectedUserId(updatedUsers[0]?.id || '');
+      }
+    } catch (requestError) {
+      setError(requestError instanceof SyntaxError ? 'The selected file is not valid JSON.' : requestError.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="dashboard-layout">
       <aside className="dashboard-sidebar">
@@ -128,6 +157,20 @@ export default function Admin() {
           </div>
           <span className="admin-count">{users.length} accounts</span>
         </header>
+
+        <section className="admin-restore-panel glass-panel">
+          <div>
+            <h2>Restore a local backup</h2>
+            <p>Merge accounts, bots, conversations, and website knowledge. Existing hosted records are kept.</p>
+          </div>
+          <form onSubmit={handleBackupRestore}>
+            <input type="file" accept=".json,application/json" aria-label="BroChat backup JSON file" onChange={(event) => setBackupFile(event.target.files?.[0] || null)} required />
+            <button className="btn-primary" type="submit" disabled={!backupFile || saving}><Upload size={16} /> {saving ? 'Restoring...' : 'Merge backup'}</button>
+          </form>
+          <small>Backup files contain account password hashes. Upload only over this secure admin page.</small>
+          {error && !selectedUser && <p className="admin-error" role="alert">{error}</p>}
+          {notice && <p className="admin-notice" role="status">{notice}</p>}
+        </section>
 
         {loading ? <div className="loading-screen">Loading accounts...</div> : (
           <div className="admin-workspace">
